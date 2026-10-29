@@ -38,6 +38,10 @@ jobs:
 
       - uses: ./.github/actions/subprocess-isolation
 
+      # The end-state check below counts only what this round posted
+      - name: Note when the round started
+        run: echo "STARTED=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
+
       - uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -52,10 +56,20 @@ jobs:
             4. If the frontier is empty: post ONE comment starting with `## Summary`. It is the spec for the next agent: what to build, every decision made, and what is out of scope. Where domain-modeling would update `GLOSSARY.md` or write an ADR, put the proposed text under `### Glossary` / `### ADR` instead; the implementing agent adds the files. End by asking the human to reply "ok" or correct it. Stop.
             5. If your `## Summary` is your latest comment and the human has confirmed it since: run `gh issue edit ${{ github.event.issue.number }} --remove-label idea --add-label grilled` and stop. If they corrected it, go back to step 2.
 
+            Post every comment with `gh issue comment ${{ github.event.issue.number }} --body-file <file>`. Only what you post reaches the human: nobody sees your final reply.
+
             Never change repository files in this stage.
           claude_args: |
             --model ${{ vars.CLAUDE_MODEL || 'sonnet' }}
             --allowedTools "Bash,Read,Glob,Grep,Edit,Write,Skill,Agent"
+
+      - name: Check the agent posted a round or moved the idea on
+        run: |
+          gh issue view "$NUMBER" --repo "$GITHUB_REPOSITORY" --json labels,comments --jq '
+            any(.labels[]; .name == "grilled" or .name == "needs-human") or
+            any(.comments[]; .author.login == "claude" and .createdAt > env.STARTED)' | grep -qx true
+        env:
+          GH_TOKEN: ${{ github.token }}
 
       - uses: ./.github/actions/needs-human
         if: failure()
