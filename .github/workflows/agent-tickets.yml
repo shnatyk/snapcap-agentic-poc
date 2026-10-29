@@ -45,7 +45,7 @@ jobs:
             - Create it with the skill's issue template and no labels.
             - Link it to #${{ github.event.issue.number }} as a sub-issue (see `docs/agents/issue-tracker.md`).
             - Copy any `### Glossary` / `### ADR` text from the summary into the ticket that should add it.
-            - If it has no open blockers, run `gh issue edit <ticket> --add-label backlog` as a separate command. That label starts the implementing agent. Leave blocked tickets unlabeled.
+            - If it has no open blockers, run `gh issue edit <ticket> --add-label backlog` as a separate command. That label starts the implementing agent. Leave blocked tickets unlabeled. A ticket that needs a new npm package gets `needs-human` instead of `backlog`, as `AGENTS.md` says, so the owner adds the packages before anyone implements it.
 
             Last, comment on #${{ github.event.issue.number }} with the list of tickets.
 
