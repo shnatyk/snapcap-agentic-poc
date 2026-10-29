@@ -1,0 +1,80 @@
+name: "Agent: apply QA feedback"
+
+on:
+  pull_request_review:
+    types: [submitted]
+
+jobs:
+  qa-fix:
+    # A collaborator clicked "Request changes" on an agent PR
+    if: >-
+      github.event.review.state == 'changes_requested' &&
+      github.event.review.user.type == 'User' &&
+      contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.review.author_association) &&
+      github.event.pull_request.user.login == 'claude[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    concurrency:
+      group: agent-${{ github.event.pull_request.number }}
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+      id-token: write
+    env:
+      NUMBER: ${{ github.event.pull_request.number }}
+      # Strips the Anthropic key from the agent's shell; GitHub tokens stay
+      CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: 1
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+
+      - name: Mark the PR as in progress
+        run: |
+          gh api --method DELETE "repos/$GITHUB_REPOSITORY/issues/$NUMBER/labels/needs-human" || true
+          gh api --method DELETE "repos/$GITHUB_REPOSITORY/issues/$NUMBER/labels/done" || true
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            A human tested PR #${{ github.event.pull_request.number }} and requested changes in review ${{ github.event.review.id }}. Their feedback is that review's body and its inline comments:
+            - `gh api repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/reviews/${{ github.event.review.id }}`
+            - `gh api repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/reviews/${{ github.event.review.id }}/comments`
+            Read the rest of the PR conversation for context (`gh pr view ${{ github.event.pull_request.number }} --comments`).
+
+            You run unattended in GitHub Actions, on the PR branch. Apply what the feedback asks, minimally, following `docs/agents/scope-and-simplicity.md`. Where a point is ambiguous, take the most likely reading and say which one you took.
+
+            `npm run typecheck`, `npm test` and `npm run build` must pass; then commit and `git push`.
+
+            Then:
+            1. Post ONE PR comment starting with `## QA fixes`: what you changed for each point of feedback.
+            2. Run `gh pr edit ${{ github.event.pull_request.number }} --add-label done`.
+          claude_args: |
+            --model ${{ vars.CLAUDE_MODEL || 'sonnet' }}
+            --allowedTools "Bash,Read,Glob,Grep,Edit,Write,Skill,Agent"
+
+      - name: Check the agent finished, then ask the owner for QA again
+        run: |
+          labels=$(gh pr view "$NUMBER" --repo "$GITHUB_REPOSITORY" --json labels --jq '.labels[].name')
+          grep -qx needs-human <<< "$labels" && exit 0
+          grep -qx done <<< "$labels"
+          gh pr edit "$NUMBER" --repo "$GITHUB_REPOSITORY" --add-reviewer "$(.github/scripts/owner.sh "$NUMBER")"
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - uses: ./.github/actions/needs-human
+        if: failure()
+        with:
+          number: ${{ env.NUMBER }}

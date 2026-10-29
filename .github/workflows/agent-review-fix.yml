@@ -1,0 +1,75 @@
+name: "Agent: apply review"
+
+on:
+  pull_request:
+    types: [labeled]
+
+jobs:
+  review-fix:
+    if: github.event.label.name == 'reviewed'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    concurrency:
+      group: agent-${{ github.event.pull_request.number }}
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+      id-token: write
+    env:
+      NUMBER: ${{ github.event.pull_request.number }}
+      # Strips the Anthropic key from the agent's shell; GitHub tokens stay
+      CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: 1
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+
+      - name: Clear needs-human from an earlier run
+        run: gh api --method DELETE "repos/$GITHUB_REPOSITORY/issues/$NUMBER/labels/needs-human" || true
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          # The `reviewed` label is added by the review agent, i.e. claude[bot]
+          allowed_bots: claude
+          prompt: |
+            PR #${{ github.event.pull_request.number }} has an automated code review: the latest comment starting with `## Code review` (`gh pr view ${{ github.event.pull_request.number }} --comments`). The spec is the issue the PR closes.
+
+            You run unattended in GitHub Actions, on the PR branch. Decide which findings to act on, following `docs/agents/scope-and-simplicity.md`:
+            - Fix: bugs, missing or wrong spec requirements, clear breaches of documented standards.
+            - Usually skip: judgement-call smells, style nits, extra guards or validation for cases nobody reported, refactors outside the change.
+            Keep fixes small. If nothing is worth fixing, change nothing.
+
+            If you changed code: `npm run typecheck`, `npm test` and `npm run build` must pass; then commit and `git push`.
+
+            Then:
+            1. Post ONE PR comment starting with `## Review fixes`: one line per finding you fixed and per finding you skipped, with the reason.
+            2. Run `gh pr edit ${{ github.event.pull_request.number }} --remove-label reviewed --add-label done`.
+          claude_args: |
+            --model ${{ vars.CLAUDE_MODEL || 'sonnet' }}
+            --allowedTools "Bash,Read,Glob,Grep,Edit,Write,Skill,Agent"
+
+      - name: Check the agent finished, then ask the owner for QA
+        run: |
+          labels=$(gh pr view "$NUMBER" --repo "$GITHUB_REPOSITORY" --json labels --jq '.labels[].name')
+          grep -qx needs-human <<< "$labels" && exit 0
+          grep -qx done <<< "$labels"
+          gh pr edit "$NUMBER" --repo "$GITHUB_REPOSITORY" --add-reviewer "$(.github/scripts/owner.sh "$NUMBER")"
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - uses: ./.github/actions/needs-human
+        if: failure()
+        with:
+          number: ${{ env.NUMBER }}

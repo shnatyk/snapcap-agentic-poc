@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# Prints the human who owns an issue or PR: the author of the original idea
+set -euo pipefail
+
+number=$1
+
+# A PR belongs to the ticket it closes
+if [ "$(gh api "repos/$GITHUB_REPOSITORY/issues/$number" --jq '.pull_request != null')" = true ]; then
+  number=$(gh pr view "$number" --repo "$GITHUB_REPOSITORY" --json closingIssuesReferences --jq '.closingIssuesReferences[0].number')
+fi
+
+# A ticket belongs to the author of its parent idea
+login=$(gh api "repos/$GITHUB_REPOSITORY/issues/$number/parent" --jq .user.login 2>/dev/null ||
+  gh api "repos/$GITHUB_REPOSITORY/issues/$number" --jq .user.login)
+
+case $login in
+  *"[bot]") exit 1 ;;
+  *) echo "$login" ;;
+esac

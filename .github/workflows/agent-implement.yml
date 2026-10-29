@@ -1,0 +1,82 @@
+name: "Agent: implement ticket"
+
+on:
+  issues:
+    types: [labeled]
+
+jobs:
+  implement:
+    if: github.event.label.name == 'backlog'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    concurrency:
+      group: agent-${{ github.event.issue.number }}
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+      id-token: write
+    env:
+      NUMBER: ${{ github.event.issue.number }}
+      # Strips the Anthropic key from the agent's shell; GitHub tokens stay
+      CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: 1
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Clear needs-human from an earlier run
+        run: gh api --method DELETE "repos/$GITHUB_REPOSITORY/issues/$NUMBER/labels/needs-human" || true
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Skip if a PR for this ticket is already open
+        id: existing
+        run: |
+          pr=$(.github/scripts/pr-for-issue.sh "$NUMBER")
+          echo "pr=$pr" >> "$GITHUB_OUTPUT"
+          if [ -n "$pr" ]; then
+            gh issue comment "$NUMBER" --repo "$GITHUB_REPOSITORY" --body "Not implementing again: #$pr is already open for this ticket. Close it first to start over."
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - uses: actions/setup-node@v7
+        if: steps.existing.outputs.pr == ''
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+        if: steps.existing.outputs.pr == ''
+
+      - uses: anthropics/claude-code-action@v1
+        if: steps.existing.outputs.pr == ''
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          # The `backlog` label is usually added by the tickets agent, i.e. claude[bot]
+          allowed_bots: claude
+          prompt: |
+            /implement The ticket is GitHub issue #${{ github.event.issue.number }}: `gh issue view ${{ github.event.issue.number }} --comments`. If it has a parent issue, read that too.
+
+            You run unattended in GitHub Actions:
+            - Start a new branch: `git switch -c ${{ github.event.issue.number }}-<short-kebab-summary>`.
+            - For /tdd, pick the seams yourself from the acceptance criteria. Nobody can confirm them, so list them in the PR body.
+            - Skip the skill's final /code-review step. A review agent runs on the PR.
+            - If the ticket carries `### Glossary` / `### ADR` text, add it as `GLOSSARY.md` / `docs/adr/` files.
+            - `npm run typecheck`, `npm test` and `npm run build` must pass before you push.
+            - Push the branch and open a PR to master: `gh pr create --base master --title "<ticket title>" --body-file <file>`. Body: `Closes #${{ github.event.issue.number }}`, a few bullets on what changed, the seams you tested, and anything you decided because nobody could be asked.
+          claude_args: |
+            --model ${{ vars.CLAUDE_MODEL || 'sonnet' }}
+            --allowedTools "Bash,Read,Glob,Grep,Edit,Write,Skill,Agent"
+
+      - name: Check the agent opened a PR
+        if: steps.existing.outputs.pr == ''
+        run: |
+          [ -n "$(.github/scripts/pr-for-issue.sh "$NUMBER")" ] ||
+            gh issue view "$NUMBER" --repo "$GITHUB_REPOSITORY" --json labels --jq '.labels[].name' | grep -qx needs-human
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - uses: ./.github/actions/needs-human
+        if: failure()
+        with:
+          number: ${{ env.NUMBER }}

@@ -1,0 +1,65 @@
+name: "Agent: split into tickets"
+
+on:
+  issues:
+    types: [labeled]
+
+jobs:
+  tickets:
+    if: github.event.label.name == 'grilled'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    concurrency:
+      group: agent-${{ github.event.issue.number }}
+    permissions:
+      contents: read
+      issues: write
+      id-token: write
+    env:
+      NUMBER: ${{ github.event.issue.number }}
+      # Strips the Anthropic key from the agent's shell; GitHub tokens stay
+      CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: 1
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Clear needs-human from an earlier run
+        run: gh api --method DELETE "repos/$GITHUB_REPOSITORY/issues/$NUMBER/labels/needs-human" || true
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          # The `grilled` label is usually added by the grill agent, i.e. claude[bot]
+          allowed_bots: claude
+          prompt: |
+            /to-tickets Source: GitHub issue #${{ github.event.issue.number }}. It has been grilled: its latest `## Summary` comment is the spec, and the thread holds the reasoning.
+
+            You run unattended in GitHub Actions: skip step 4 (quiz the user) and publish straight away.
+
+            Be minimal. One ticket is the default. Split only when the work has clearly separate parts that are each worth shipping alone; fewer, larger tickets beat many small ones here.
+
+            For each ticket, in dependency order:
+            - Create it with the skill's issue template and no labels.
+            - Link it to #${{ github.event.issue.number }} as a sub-issue (see `docs/agents/issue-tracker.md`).
+            - Copy any `### Glossary` / `### ADR` text from the summary into the ticket that should add it.
+            - If it has no open blockers, run `gh issue edit <ticket> --add-label backlog` as a separate command. That label starts the implementing agent. Leave blocked tickets unlabeled.
+
+            Last, comment on #${{ github.event.issue.number }} with the list of tickets.
+
+            Never change repository files in this stage.
+          claude_args: |
+            --model ${{ vars.CLAUDE_MODEL || 'sonnet' }}
+            --allowedTools "Bash,Read,Glob,Grep,Edit,Write,Skill,Agent"
+
+      - name: Check the agent created tickets
+        run: |
+          [ "$(gh api "repos/$GITHUB_REPOSITORY/issues/$NUMBER/sub_issues" --jq length)" -gt 0 ] ||
+            gh issue view "$NUMBER" --repo "$GITHUB_REPOSITORY" --json labels --jq '.labels[].name' | grep -qx needs-human
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - uses: ./.github/actions/needs-human
+        if: failure()
+        with:
+          number: ${{ env.NUMBER }}

@@ -1,0 +1,58 @@
+name: Merge on approval
+
+on:
+  pull_request_review:
+    types: [submitted]
+
+jobs:
+  merge:
+    # A collaborator clicked "Approve" on an agent PR
+    if: >-
+      github.event.review.state == 'approved' &&
+      github.event.review.user.type == 'User' &&
+      contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.review.author_association) &&
+      github.event.pull_request.user.login == 'claude[bot]'
+    runs-on: ubuntu-latest
+    # Same group as the agents, so a merge waits for a running agent to finish
+    concurrency:
+      group: agent-${{ github.event.pull_request.number }}
+    permissions:
+      contents: write
+      pull-requests: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      PR: ${{ github.event.pull_request.number }}
+    steps:
+      - name: Squash-merge into master
+        run: |
+          if ! gh pr view "$PR" --repo "$GITHUB_REPOSITORY" --json labels --jq '.labels[].name' | grep -qx done; then
+            gh pr comment "$PR" --repo "$GITHUB_REPOSITORY" --body "Not merged: the agents aren't done yet. Approve again once the PR has the \`done\` label."
+            exit 1
+          fi
+          if ! out=$(gh pr merge "$PR" --repo "$GITHUB_REPOSITORY" --squash --delete-branch 2>&1); then
+            printf 'Not merged:\n\n```\n%s\n```\n\nUsually a conflict with master or a failing `check`. Fix it, then approve again.\n' "$out" |
+              gh pr comment "$PR" --repo "$GITHUB_REPOSITORY" --body-file -
+            exit 1
+          fi
+
+  # A merge made with GITHUB_TOKEN starts no other workflows, so deploy and preview cleanup run from here
+  deploy:
+    needs: merge
+    permissions:
+      contents: write
+    uses: ./.github/workflows/deploy.yml
+
+  remove-preview:
+    # After deploy, so the two never push to gh-pages at the same time
+    needs: deploy
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: rossjrw/pr-preview-action@v1
+        with:
+          action: remove
+          pr-number: ${{ github.event.pull_request.number }}

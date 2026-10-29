@@ -1,0 +1,59 @@
+name: "Agent: review PR"
+
+on:
+  pull_request:
+    types: [opened]
+
+jobs:
+  review:
+    # Only PRs opened by the implementing agent; human PRs follow the usual review
+    if: github.event.pull_request.user.login == 'claude[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    concurrency:
+      group: agent-${{ github.event.pull_request.number }}
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+      id-token: write
+    env:
+      NUMBER: ${{ github.event.pull_request.number }}
+      # Strips the Anthropic key from the agent's shell; GitHub tokens stay
+      CLAUDE_CODE_SUBPROCESS_ENV_SCRUB: 1
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+
+      - name: Clear needs-human from an earlier run
+        run: gh api --method DELETE "repos/$GITHUB_REPOSITORY/issues/$NUMBER/labels/needs-human" || true
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          allowed_bots: claude
+          prompt: |
+            /code-review The fixed point is `origin/master`. This is PR #${{ github.event.pull_request.number }}; its spec is the issue it closes (see the PR body).
+
+            You run unattended in GitHub Actions. Don't change any code in this stage.
+
+            When the report is ready:
+            1. Post it as ONE PR comment starting with `## Code review`: `gh pr comment ${{ github.event.pull_request.number }} --body-file <file>`.
+            2. Run `gh pr edit ${{ github.event.pull_request.number }} --add-label reviewed`.
+          claude_args: |
+            --model ${{ vars.CLAUDE_MODEL || 'sonnet' }}
+            --allowedTools "Bash,Read,Glob,Grep,Edit,Write,Skill,Agent"
+
+      - name: Check the agent set a label
+        run: gh pr view "$NUMBER" --repo "$GITHUB_REPOSITORY" --json labels --jq '.labels[].name' | grep -qxE 'reviewed|needs-human'
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - uses: ./.github/actions/needs-human
+        if: failure()
+        with:
+          number: ${{ env.NUMBER }}
