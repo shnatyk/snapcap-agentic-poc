@@ -61,6 +61,7 @@ Open an issue such as "Let me edit a to-do's title" and give it the `idea` label
 - **One agent per item at a time.** All agent jobs and the merge share the concurrency group `agent-<number>`, so they queue instead of overlapping.
 - **The human gate is enforced, not just agreed.** The ruleset means no agent can push to `master` or merge without a human approval. A push after an approval dismisses it.
 - **Merge uses `GITHUB_TOKEN`**, so its push to `master` starts nothing on its own. `merge.yml` calls `deploy.yml` and removes the preview itself.
+- **Skipped runs are deleted.** `on:` can't filter by label or comment author, so every event starts each agent workflow listening for it, and most end skipped. After each agent job (and the merge), `prune-skipped-runs.yml` deletes the runs where nothing ran.
 - **Who can start agents.** Comment and review triggers filter on `author_association`, and `claude-code-action` checks write access again.
 
 ## Known gaps

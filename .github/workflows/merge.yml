@@ -19,6 +19,8 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+      # Without it, `Closes #N` in the PR body silently closes nothing
+      issues: write
     env:
       GH_TOKEN: ${{ github.token }}
       PR: ${{ github.event.pull_request.number }}
@@ -56,3 +58,11 @@ jobs:
         with:
           action: remove
           pr-number: ${{ github.event.pull_request.number }}
+
+  # Skipped along with merge, so a run where nothing ran stays skipped and the next prune deletes it
+  prune:
+    needs: merge
+    if: ${{ !cancelled() && needs.merge.result != 'skipped' }}
+    permissions:
+      actions: write
+    uses: ./.github/workflows/prune-skipped-runs.yml
