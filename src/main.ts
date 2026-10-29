@@ -1,3 +1,6 @@
+import "@fontsource/jost/300.css";
+import "@fontsource/jost/400.css";
+import "@fontsource/limelight/400.css";
 import "./style.css";
 import { addTodo, clearCompleted, removeTodo, sortByStatus, toggleTodo, type Todo } from "./todos";
 
@@ -41,7 +44,9 @@ function render() {
 
       const remove = document.createElement("button");
       remove.type = "button";
-      remove.textContent = "Delete";
+      remove.setAttribute("aria-label", "Delete");
+      remove.innerHTML =
+        '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6L18 18M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
       remove.addEventListener("click", () => update(removeTodo(todos, todo.id)));
 
       item.append(checkbox, title, remove);
