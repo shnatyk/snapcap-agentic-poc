@@ -39,6 +39,10 @@ Single-context: `GLOSSARY.md` + `docs/adr/` at the repo root. See `docs/agents/d
 
 Minimal changes, low defensive coding. See `docs/agents/scope-and-simplicity.md`.
 
+### Claude Code docs
+
+Looking up how Claude Code or `claude-code-action` behaves: see `docs/agents/claude-code-docs.md`.
+
 ### Where skills live
 
 Upstream skills (`mattpocock/skills`) live in `.claude/skills/`, managed by `npx skills` and tracked in `skills-lock.json`. They are committed so the GitHub runner sees them. Don't edit them; steer them from `docs/agents/`. To add or update: `npx skills add mattpocock/skills -a claude-code`, or `npx skills update`.

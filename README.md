@@ -28,7 +28,7 @@ You can skip a stage by adding its label by hand: for example, open an issue tha
 
 ## When an agent gets stuck
 
-Every agent job checks its own end state: the expected label, the PR, or the tickets. If the run failed, or ended without that state, the job adds `needs-human` and comments with an `@owner` mention and a link to the run. An agent that can't finish without a person (a contradictory ticket, tests it can't fix) does the same itself, saying what it needs.
+Every agent job checks its own end state: the expected label, the PR, or the tickets. If the run failed, or ended without that state, the job adds `needs-human` and comments with an `@owner` mention and a link to the run. An agent that can't finish without a person (a contradictory ticket, tests it can't fix) does the same itself, saying what it needs. `merge.yml` does the same when a step around the merge fails; a failed merge itself gets a comment with the reason instead.
 
 To retry, fix the cause and click **Re-run jobs** on the failed run. For the grill stage, a new comment works too. Each run clears `needs-human` when it starts.
 

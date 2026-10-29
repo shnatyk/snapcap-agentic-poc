@@ -2,3 +2,15 @@ node_modules/
 dist/
 .DS_Store
 *.local
+
+# 0-byte placeholders Claude Code's sandbox creates here while an agent's command runs
+/.bash_profile
+/.bashrc
+/.gitconfig
+/.idea
+/.mcp.json
+/.profile
+/.ripgreprc
+/.vscode
+/.zprofile
+/.zshrc

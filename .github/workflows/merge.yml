@@ -25,7 +25,13 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       PR: ${{ github.event.pull_request.number }}
     steps:
+      - uses: actions/checkout@v7
+
+      - name: Clear needs-human from an earlier run
+        run: gh api --method DELETE "repos/$GITHUB_REPOSITORY/issues/$PR/labels/needs-human" || true
+
       - name: Squash-merge into master
+        id: merge
         run: |
           if ! gh pr view "$PR" --repo "$GITHUB_REPOSITORY" --json labels --jq '.labels[].name' | grep -qx done; then
             gh pr comment "$PR" --repo "$GITHUB_REPOSITORY" --body "Not merged: the agents aren't done yet. Approve again once the PR has the \`done\` label."
@@ -48,6 +54,12 @@ jobs:
               gh issue close "$idea" --repo "$GITHUB_REPOSITORY" --reason completed --comment "All its tickets are done."
             fi
           done
+
+      # The merge step comments on its own failures
+      - uses: ./.github/actions/needs-human
+        if: failure() && steps.merge.outcome != 'failure'
+        with:
+          number: ${{ env.PR }}
 
   # A merge made with GITHUB_TOKEN starts no other workflows, so deploy and preview cleanup run from here
   deploy:
