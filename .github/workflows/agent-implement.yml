@@ -63,7 +63,7 @@ jobs:
             - Skip the skill's final /code-review step. A review agent runs on the PR.
             - If the ticket carries `### Glossary` / `### ADR` text, add it as `GLOSSARY.md` / `docs/adr/` files.
             - `npm run typecheck`, `npm test` and `npm run build` must pass before you push.
-            - Push the branch and open a PR to master: `gh pr create --base master --title "<ticket title>" --body-file <file>`. Body: `Closes #${{ github.event.issue.number }}`, a few bullets on what changed, the seams you tested, and anything you decided because nobody could be asked.
+            - Push the branch and open a PR to master: `gh pr create --base master --title "<ticket title>" --body-file <file>`. Write the body with the /pr skill. Start it with `Closes #${{ github.event.issue.number }}`, and add the seams you tested and anything you decided because nobody could be asked.
           claude_args: |
             --model ${{ vars.CLAUDE_MODEL || 'sonnet' }}
             --allowedTools "Bash,Read,Glob,Grep,Edit,Write,Skill,Agent"

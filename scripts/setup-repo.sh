@@ -9,6 +9,12 @@ gh label create reviewed    --force --color 5319E7 --description "Agent reviewed
 gh label create done        --force --color 0E8A16 --description "Agents are done; ready for human QA on the preview"
 gh label create needs-human --force --color B60205 --description "An agent stopped and needs a person"
 
+# Triage roles used by the /triage skill (ready-for-agent is `backlog`, above)
+gh label create needs-triage    --force --color EDEDED --description "Maintainer needs to evaluate this issue"
+gh label create needs-info      --force --color D876E3 --description "Waiting on reporter for more information"
+gh label create ready-for-human --force --color 0052CC --description "Requires human implementation"
+gh label create wontfix         --force --color FFFFFF --description "Will not be actioned"
+
 # master changes only through a squash-merged PR with one approval and a green `check` job (pr.yml).
 # Repo admins (role id 5) may bypass it inside a PR, to merge their own; agents can't.
 ruleset=$(cat <<'EOF'

@@ -29,7 +29,7 @@ GitHub Issues, through the `gh` CLI. See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 
-The skills' `ready-for-agent` role maps to this repo's `backlog` label. See `docs/agents/triage-labels.md`.
+Default triage labels, except `ready-for-agent`, which is this repo's `backlog` label and starts the implementing agent. See `docs/agents/triage-labels.md`.
 
 ### Domain docs
 
@@ -41,4 +41,4 @@ Minimal changes, low defensive coding. See `docs/agents/scope-and-simplicity.md`
 
 ### Where skills live
 
-Upstream skills (`mattpocock/skills`) live in `.agents/skills/`, tracked in `skills-lock.json`. `.claude/skills/<name>` are symlinks into it, committed so the GitHub runner sees them. Don't edit the skills; steer them from `docs/agents/`.
+Upstream skills (`mattpocock/skills`) live in `.claude/skills/`, managed by `npx skills` and tracked in `skills-lock.json`. They are committed so the GitHub runner sees them. Don't edit them; steer them from `docs/agents/`. To add or update: `npx skills add mattpocock/skills -a claude-code`, or `npx skills update`.
