@@ -31,6 +31,18 @@ jobs:
           ref: ${{ github.event.pull_request.head.ref }}
           fetch-depth: 0
 
+      # The PR can change .github/actions and .github/scripts, and this job runs them outside
+      # the sandbox, in the same job as the Anthropic key. So they come from master.
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          path: .trusted
+          sparse-checkout: |
+            /.github/actions/
+            /.github/scripts/
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+
       - name: Mark the PR as in progress
         run: |
           gh api --method DELETE "repos/$GITHUB_REPOSITORY/issues/$NUMBER/labels/needs-human" || true
@@ -43,9 +55,10 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
 
-      - run: npm ci
+      # Without install scripts: the PR's lockfile and .npmrc would run them outside the sandbox
+      - run: npm ci --ignore-scripts
 
-      - uses: ./.github/actions/subprocess-isolation
+      - uses: ./.trusted/.github/actions/subprocess-isolation
 
       - uses: anthropics/claude-code-action@v1
         with:
@@ -72,11 +85,11 @@ jobs:
           labels=$(gh pr view "$NUMBER" --repo "$GITHUB_REPOSITORY" --json labels --jq '.labels[].name')
           grep -qx needs-human <<< "$labels" && exit 0
           grep -qx done <<< "$labels"
-          gh pr edit "$NUMBER" --repo "$GITHUB_REPOSITORY" --add-reviewer "$(.github/scripts/owner.sh "$NUMBER")"
+          gh pr edit "$NUMBER" --repo "$GITHUB_REPOSITORY" --add-reviewer "$(.trusted/.github/scripts/owner.sh "$NUMBER")"
         env:
           GH_TOKEN: ${{ github.token }}
 
-      - uses: ./.github/actions/needs-human
+      - uses: ./.trusted/.github/actions/needs-human
         if: failure()
         with:
           number: ${{ env.NUMBER }}

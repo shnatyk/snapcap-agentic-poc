@@ -15,6 +15,6 @@ runs:
         NUMBER: ${{ inputs.number }}
         RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
       run: |
-        owner=$("$GITHUB_WORKSPACE/.github/scripts/owner.sh" "$NUMBER" || true)
+        owner=$("$GITHUB_ACTION_PATH/../../scripts/owner.sh" "$NUMBER" || true)
         gh api "repos/$GITHUB_REPOSITORY/issues/$NUMBER/labels" -f "labels[]=needs-human" > /dev/null
         gh api "repos/$GITHUB_REPOSITORY/issues/$NUMBER/comments" > /dev/null -f body="${owner:+@$owner }The **$GITHUB_WORKFLOW** stage stopped without finishing. [See the run]($RUN_URL). Once the cause is fixed, re-run it from that page."
