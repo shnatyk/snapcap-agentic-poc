@@ -401,6 +401,7 @@
         <li><h3>Do master nic nie wchodzi bez człowieka</h3><p>Reguła na gałęzi <code>master</code> wymaga PR-a, jednej akceptacji i zielonego joba <code>check</code> (typecheck, testy, build). Agenci nie mogą jej obejść. Nowy push po akceptacji ją unieważnia.</p></li>
         <li><h3>Agentów uruchamiają tylko współpracownicy</h3><p>Repo jest publiczne, więc każdy może czytać i komentować. Etykietę może jednak dodać tylko ktoś z dostępem do repo. Komentarze i review uruchamiają agenta tylko wtedy, gdy ich autor jest właścicielem albo współpracownikiem.</p></li>
         <li><h3>Klucz API jest schowany</h3><p>Leży w sekretach repo i w logach jest maskowany. Z powłoki, w której agent wykonuje komendy, jest usuwany.</p></li>
+        <li><h3>Kod z PR-a nie trafia obok klucza</h3><p>Etapy, które pracują na PR-ze, biorą skrypty pomocnicze z <code>master</code>, a paczki npm instalują bez skryptów instalacyjnych. Dzięki temu agent nie podrzuci w swoim PR-ze kodu, który następny etap uruchomiłby obok klucza API.</p></li>
         <li><h3>Jeden agent na zadanie</h3><p>Etapy dla tego samego issue albo PR-a czekają w kolejce, zamiast działać naraz.</p></li>
         <li><h3>Koszty</h3><p>GitHub Actions jest darmowy dla publicznych repo. Za Claude płacisz za zużyte tokeny, z konta w Claude Console, z miesięcznym limitem ustawionym na workspace. Każdy job ma też limit czasu, od 20 do 45 minut.</p></li>
       </ul>
