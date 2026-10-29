@@ -2,6 +2,9 @@
 # Prints the human who owns an issue or PR: the author of the original idea
 set -euo pipefail
 
+# Set in Actions; in a local clone, gh knows the repo
+: "${GITHUB_REPOSITORY:=$(gh repo view --json nameWithOwner --jq .nameWithOwner)}"
+
 number=$1
 
 # A PR belongs to the ticket it closes
