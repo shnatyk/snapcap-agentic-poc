@@ -17,3 +17,11 @@ export function toggleTodo(todos: Todo[], id: string): Todo[] {
 export function removeTodo(todos: Todo[], id: string): Todo[] {
   return todos.filter((todo) => todo.id !== id);
 }
+
+export function clearCompleted(todos: Todo[]): Todo[] {
+  return todos.filter((todo) => !todo.done);
+}
+
+export function sortByStatus(todos: Todo[]): Todo[] {
+  return [...todos.filter((todo) => todo.done), ...todos.filter((todo) => !todo.done)];
+}
