@@ -19,7 +19,7 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
-      # Without it, `Closes #N` in the PR body silently closes nothing
+      # To close the ticket and its idea
       issues: write
     env:
       GH_TOKEN: ${{ github.token }}
@@ -36,6 +36,18 @@ jobs:
               gh pr comment "$PR" --repo "$GITHUB_REPOSITORY" --body-file -
             exit 1
           fi
+
+      # GitHub ignores `Closes #N` when GITHUB_TOKEN merges, even with issues: write
+      - name: Close the ticket, and its idea once all its tickets are closed
+        run: |
+          for ticket in $(gh pr view "$PR" --repo "$GITHUB_REPOSITORY" --json closingIssuesReferences --jq '.closingIssuesReferences[].number'); do
+            gh issue close "$ticket" --repo "$GITHUB_REPOSITORY" --reason completed --comment "Done in #$PR."
+            # On a 404, gh api prints the error body to stdout, so keep nothing from a failed lookup
+            idea=$(gh api "repos/$GITHUB_REPOSITORY/issues/$ticket/parent" --jq .number 2>/dev/null) || continue
+            if gh api "repos/$GITHUB_REPOSITORY/issues/$idea/sub_issues?per_page=100" --jq 'all(.state == "closed")' | grep -qx true; then
+              gh issue close "$idea" --repo "$GITHUB_REPOSITORY" --reason completed --comment "All its tickets are done."
+            fi
+          done
 
   # A merge made with GITHUB_TOKEN starts no other workflows, so deploy and preview cleanup run from here
   deploy:
