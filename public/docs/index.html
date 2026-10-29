@@ -540,7 +540,7 @@ npm run dev</code></pre></div>
         <li>Ticket, który czeka na inny, nie dostaje <code>backlog</code>. Dodaj ją ręcznie, gdy blokujący ticket zostanie zmergowany.</li>
         <li>Tickety robione równolegle mogą się gryźć przy merge'u. Workflow o tym napisze, a rozwiązać musi człowiek.</li>
         <li>Agenci nie mogą zmieniać plików workflow w <code>.github/workflows/</code>.</li>
-        <li>Agenci nie dodadzą nowej paczki npm: w ich sandboxie <code>package.json</code> i <code>package-lock.json</code> są tylko do odczytu. Ticket, który jej potrzebuje, kończy się etykietą <code>needs-human</code>. Dodaj paczkę na <code>master</code> sam, a potem znów nadaj ticketowi etykietę <code>backlog</code>.</li>
+        <li>Agenci nie dodadzą nowej paczki npm: w ich sandboxie <code>package.json</code> i <code>package-lock.json</code> są tylko do odczytu. Ticket, który jej potrzebuje, dostaje od agenta etykietę <code>needs-human</code> zamiast <code>backlog</code>, razem z listą paczek. Dodaj je na <code>master</code> sam, a potem nadaj ticketowi etykietę <code>backlog</code>.</li>
         <li>Agent ma pełny dostęp do powłoki na serwerze GitHuba i czyta treść issue oraz komentarzy. Trzymaj krótką listę współpracowników.</li>
       </ul>
       <details>
