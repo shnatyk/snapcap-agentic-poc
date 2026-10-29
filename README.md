@@ -75,6 +75,7 @@ Open an issue such as "Let me edit a to-do's title" and give it the `idea` label
 - Tickets implemented in parallel can conflict at merge. The merge workflow comments, and someone resolves it. PRs don't need to be up to date with `master`, so a clean merge can still break it.
 - The parent idea issue is not closed automatically.
 - Agents can't edit `.github/workflows/`: the Claude GitHub App has no permission for workflow files.
+- Agents can't add npm packages. With `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB` on, Claude Code's sandbox mounts `package.json` and `package-lock.json` read-only. A ticket that needs a new package stops with `needs-human`: add the package to `master` yourself, then label the ticket `backlog` again.
 - Job timeouts (20–45 min) are the only cost guard.
 - Agents have full shell access in the runner, and collaborators' issue and comment text goes straight into their context. Keep the collaborator list short.
 - The admin bypass uses repository role id `5`. If Settings → Rules shows a different role, fix it there.
