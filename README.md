@@ -49,6 +49,7 @@ Optional: set the repo variable `CLAUDE_MODEL` to change the model (default `son
 - **Anyone** can see the code, issues, PRs, comments, Actions logs and the Pages site. They can comment, open issues and open PRs from a fork. They can't push, merge, add labels or change settings.
 - **Only collaborators start agents.** Labels need write or triage access. Comments and reviews start an agent only when their author is the owner or a collaborator. `claude-code-action` also checks write access before calling Claude.
 - **Secrets stay secret.** `ANTHROPIC_API_KEY` is never shown in the UI, is masked in logs, and isn't given to fork PRs. The agent's shell doesn't get it either: `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB` strips it and keeps only the GitHub token.
+- **The PR branch can't plant code next to the key.** Before the agent starts, the PR stages run nothing from the PR branch outside the sandbox. `.github/actions` and `.github/scripts` come from `master`, and `npm ci` runs with `--ignore-scripts`. Otherwise an agent could plant code in its PR, and the next stage would run that code in the job that holds `ANTHROPIC_API_KEY`.
 - **Strangers' comments** can still end up in a thread an agent reads. `AGENTS.md` tells agents to ignore comments from non-collaborators. That's a prompt rule, not a hard block. To block it fully, set Settings → Moderation → Interaction limits to "collaborators only" (max 6 months at a time). Untested here: if `claude[bot]` comments start failing, turn it off.
 - **Actions minutes** are free on public repos.
 
