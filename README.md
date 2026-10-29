@@ -2,6 +2,8 @@
 
 A to-do list web app, used as a proof of concept for a label-driven agent pipeline on GitHub. Each label starts one agent in GitHub Actions ([`claude-code-action`](https://github.com/anthropics/claude-code-action)). The agent runs one of [Matt Pocock's skills](https://github.com/mattpocock/skills), then sets the label that starts the next agent. People step in at three points: answering the grill, testing the preview, and approving the PR.
 
+A plain-language guide to the pipeline and its setup, in Polish, ships with the app: [`public/docs/index.html`](public/docs/index.html), live at <https://shnatyk.github.io/snapcap-agentic-poc/docs/>. The app links to it. Update it when the flow changes.
+
 ## The flow
 
 | Trigger                        | Set by | Workflow               | What happens                                                                                                             | Ends with                          |
@@ -31,6 +33,8 @@ Every agent job checks its own end state: the expected label, the PR, or the tic
 To retry, fix the cause and click **Re-run jobs** on the failed run. For the grill stage, a new comment works too. Each run clears `needs-human` when it starts.
 
 ## Setup (once)
+
+`./scripts/setup-wizard.sh` walks you through these steps and the optional ones. It opens each page, says what to click, sets the secret and checks the result at the end. Run it from a clone. With no `origin` remote, it creates the public repo and pushes to it. Or do the steps by hand:
 
 1. Create a **public** GitHub repo and push this folder to it. On a free plan, GitHub Pages and rulesets work only on public repos (see [Public repo](#public-repo-who-can-do-what)).
 2. Install the **Claude GitHub App** on that repo: <https://github.com/apps/claude>. Agents act through its token, and that is what lets one agent's label or PR start the next workflow (see below).

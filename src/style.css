@@ -41,3 +41,12 @@ li.done span {
   text-decoration: line-through;
   color: #8c959f;
 }
+
+.about {
+  margin-top: 2rem;
+  font-size: 0.875rem;
+}
+
+.about a {
+  color: #57606a;
+}
