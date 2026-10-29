@@ -63,6 +63,7 @@ jobs:
             --model ${{ vars.CLAUDE_MODEL || 'sonnet' }}
             --allowedTools "Bash,Read,Glob,Grep,Edit,Write,Skill,Agent"
 
+      # gh issue view shows bot logins without [bot] (GraphQL), unlike the REST API's claude[bot]
       - name: Check the agent posted a round or moved the idea on
         run: |
           gh issue view "$NUMBER" --repo "$GITHUB_REPOSITORY" --json labels,comments --jq '
