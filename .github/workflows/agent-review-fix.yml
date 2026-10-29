@@ -33,8 +33,9 @@ jobs:
           ref: ${{ github.event.repository.default_branch }}
           path: .trusted
           sparse-checkout: |
-            .github/actions
-            .github/scripts
+            /.github/actions/
+            /.github/scripts/
+          sparse-checkout-cone-mode: false
           persist-credentials: false
 
       - name: Clear needs-human from an earlier run
