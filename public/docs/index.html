@@ -353,7 +353,7 @@
           <span class="num">8</span>
           <div class="body">
             <div class="head"><h3>Merge i wdrożenie</h3><span class="who auto">Automat</span></div>
-            <p>Po Twoim Approve workflow scala PR do <code>master</code>, wdraża aplikację na GitHub Pages, usuwa podgląd i zamyka ticket. Jeśli coś blokuje merge, na przykład konflikt, pisze o tym w komentarzu.</p>
+            <p>Po Twoim Approve workflow scala PR do <code>master</code>, wdraża aplikację na GitHub Pages, usuwa podgląd i zamyka ticket. Gdy zamknięte są już wszystkie tickety danego pomysłu, zamyka też pomysł. Jeśli coś blokuje merge, na przykład konflikt, pisze o tym w komentarzu.</p>
             <div class="io"><span>Start: Approve</span><span>Koniec: zmiana na stronie</span></div>
           </div>
         </li>
@@ -535,7 +535,6 @@ npm run dev</code></pre></div>
       <h2>Znane ograniczenia</h2>
       <ul class="plain">
         <li>Zwykły komentarz w PR-ze niczego nie uruchamia. Uwagi do PR-a dawaj w review z <b>Request changes</b>.</li>
-        <li>Pomysł (issue z etykietą <code>idea</code>) nie zamyka się sam po merge'u. Zamykasz go ręcznie.</li>
         <li>Ticket, który czeka na inny, nie dostaje <code>backlog</code>. Dodaj ją ręcznie, gdy blokujący ticket zostanie zmergowany.</li>
         <li>Tickety robione równolegle mogą się gryźć przy merge'u. Workflow o tym napisze, a rozwiązać musi człowiek.</li>
         <li>Agenci nie mogą zmieniać plików workflow w <code>.github/workflows/</code>.</li>
@@ -549,7 +548,7 @@ npm run dev</code></pre></div>
           <li>Wspólne zasady dla wszystkich agentów są w <code>AGENTS.md</code> i <code>docs/agents/</code>. Na przykład: drobne decyzje podejmuj sam i je zapisz, a gdy bez człowieka się nie da, ustaw <code>needs-human</code>.</li>
           <li>Skille leżą w <code>.claude/skills/</code> i są w repo, żeby serwer GitHuba je widział.</li>
           <li>Wszystkie etapy dla jednego issue albo PR-a mają wspólną kolejkę <code>agent-&lt;numer&gt;</code>.</li>
-          <li>Merge robi zwykły token workflowu, który nie uruchamia innych workflowów. Dlatego <code>merge.yml</code> sam woła wdrożenie i usuwa podgląd.</li>
+          <li>Merge robi zwykły token workflowu, który nie uruchamia innych workflowów. GitHub pomija też wtedy „Closes #N” z PR-a. Dlatego <code>merge.yml</code> sam woła wdrożenie, usuwa podgląd i zamyka ticket oraz pomysł.</li>
           <li>GitHub nie umie odfiltrować wyzwalaczy po nazwie etykiety. Każde zdarzenie uruchamia wszystkie workflowy, które go nasłuchują, i większość kończy się jako „skipped”. Po każdym etapie job <code>prune</code> usuwa te puste przebiegi z listy w Actions.</li>
         </ul>
       </details>

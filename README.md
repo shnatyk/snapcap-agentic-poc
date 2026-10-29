@@ -6,17 +6,17 @@ A plain-language guide to the pipeline and its setup, in Polish, ships with the 
 
 ## The flow
 
-| Trigger                        | Set by | Workflow               | What happens                                                                                                             | Ends with                          |
-| ------------------------------ | ------ | ---------------------- | ------------------------------------------------------------------------------------------------------------------------ | ---------------------------------- |
-| `idea` on an issue             | human  | `agent-grill.yml`      | `/grill-with-docs`: one round of questions per run. Each human comment starts the next round. Ends with a `## Summary`.  | `grilled`, after you reply "ok"    |
-| `grilled` on an issue          | agent  | `agent-tickets.yml`    | `/to-tickets`, minimal: one ticket unless the work clearly splits. Tickets are sub-issues of the idea.                   | `backlog` on each unblocked ticket |
-| `backlog` on an issue          | agent  | `agent-implement.yml`  | `/implement` (with `/tdd`) on a new branch, then opens a PR with `Closes #N`. Skips if that PR is already open.          | PR opened                          |
-| PR opened by `claude[bot]`     | agent  | `agent-review.yml`     | `/code-review` against `master`, posted as one PR comment.                                                               | `reviewed`                         |
-| `reviewed` on a PR             | agent  | `agent-review-fix.yml` | Picks the findings worth fixing (minimal, low defensive coding), pushes, lists fixed and skipped. Requests your review.  | `done`                             |
-| `done` on a PR                 | agent  | none                   | **Your turn:** you get a review request. Open the preview link from the PR comment and test.                             |                                    |
-| Review: **Request changes**    | human  | `agent-qa-fix.yml`     | Applies the review and its inline comments, pushes, requests your review again.                                          | `done`                             |
-| Review: **Approve**            | human  | `merge.yml`            | Waits for any running agent, needs `done`, squash-merges, deploys, removes the preview. If it can't, it comments why.    | merged                             |
-| push to `master`               |        | `deploy.yml`           | Builds and publishes to GitHub Pages.                                                                                    |                                    |
+| Trigger                     | Set by | Workflow               | What happens                                                                                                                                                                        | Ends with                          |
+| --------------------------- | ------ | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
+| `idea` on an issue          | human  | `agent-grill.yml`      | `/grill-with-docs`: one round of questions per run. Each human comment starts the next round. Ends with a `## Summary`.                                                             | `grilled`, after you reply "ok"    |
+| `grilled` on an issue       | agent  | `agent-tickets.yml`    | `/to-tickets`, minimal: one ticket unless the work clearly splits. Tickets are sub-issues of the idea.                                                                              | `backlog` on each unblocked ticket |
+| `backlog` on an issue       | agent  | `agent-implement.yml`  | `/implement` (with `/tdd`) on a new branch, then opens a PR with `Closes #N`. Skips if that PR is already open.                                                                     | PR opened                          |
+| PR opened by `claude[bot]`  | agent  | `agent-review.yml`     | `/code-review` against `master`, posted as one PR comment.                                                                                                                          | `reviewed`                         |
+| `reviewed` on a PR          | agent  | `agent-review-fix.yml` | Picks the findings worth fixing (minimal, low defensive coding), pushes, lists fixed and skipped. Requests your review.                                                             | `done`                             |
+| `done` on a PR              | agent  | none                   | **Your turn:** you get a review request. Open the preview link from the PR comment and test.                                                                                        |                                    |
+| Review: **Request changes** | human  | `agent-qa-fix.yml`     | Applies the review and its inline comments, pushes, requests your review again.                                                                                                     | `done`                             |
+| Review: **Approve**         | human  | `merge.yml`            | Waits for any running agent, needs `done`, squash-merges, closes the ticket (and its idea after the last ticket), deploys, removes the preview. If it can't merge, it comments why. | merged, ticket closed              |
+| push to `master`            |        | `deploy.yml`           | Builds and publishes to GitHub Pages.                                                                                                                                               |                                    |
 
 `pr.yml` runs typecheck, tests and build (the `check` job) on every PR push, and keeps a preview at `<pages-url>/pr-preview/pr-<number>/`.
 
@@ -64,7 +64,7 @@ Open an issue such as "Let me edit a to-do's title" and give it the `idea` label
 - **Prompts start with `/<skill>`.** In headless mode Claude Code loads the skill and appends the rest of the prompt as `ARGUMENTS`. Stage rules (what to read, which label to set) live in the workflow prompt. Shared rules live in `AGENTS.md` and `docs/agents/`.
 - **One agent per item at a time.** All agent jobs and the merge share the concurrency group `agent-<number>`, so they queue instead of overlapping.
 - **The human gate is enforced, not just agreed.** The ruleset means no agent can push to `master` or merge without a human approval. A push after an approval dismisses it.
-- **Merge uses `GITHUB_TOKEN`**, so its push to `master` starts nothing on its own. `merge.yml` calls `deploy.yml` and removes the preview itself.
+- **Merge uses `GITHUB_TOKEN`**, so its push to `master` starts nothing on its own, and GitHub ignores the PR's `Closes #N`. `merge.yml` calls `deploy.yml`, removes the preview, and closes the ticket itself. It closes the parent idea too once all its tickets are closed.
 - **Skipped runs are deleted.** `on:` can't filter by label or comment author, so every event starts each agent workflow listening for it, and most end skipped. After each agent job (and the merge), `prune-skipped-runs.yml` deletes the runs where nothing ran.
 - **Who can start agents.** Comment and review triggers filter on `author_association`, and `claude-code-action` checks write access again.
 
@@ -73,7 +73,6 @@ Open an issue such as "Let me edit a to-do's title" and give it the `idea` label
 - Plain PR comments start nothing. QA feedback has to go in a review with **Request changes**.
 - Blocked tickets get no `backlog` label. Add it yourself once the blocker is merged.
 - Tickets implemented in parallel can conflict at merge. The merge workflow comments, and someone resolves it. PRs don't need to be up to date with `master`, so a clean merge can still break it.
-- The parent idea issue is not closed automatically.
 - Agents can't edit `.github/workflows/`: the Claude GitHub App has no permission for workflow files.
 - Agents can't add npm packages. With `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB` on, Claude Code's sandbox mounts `package.json` and `package-lock.json` read-only. A ticket that needs a new package stops with `needs-human`: add the package to `master` yourself, then label the ticket `backlog` again.
 - Job timeouts (20–45 min) are the only cost guard.
