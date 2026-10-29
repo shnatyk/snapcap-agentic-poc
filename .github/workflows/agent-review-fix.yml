@@ -75,3 +75,12 @@ jobs:
         if: failure()
         with:
           number: ${{ env.NUMBER }}
+
+  # Its own job, so the agent's token never gets actions: write. Skipped along with
+  # review-fix, so a run where nothing ran stays skipped and the next prune deletes it.
+  prune:
+    needs: review-fix
+    if: ${{ !cancelled() && needs.review-fix.result != 'skipped' }}
+    permissions:
+      actions: write
+    uses: ./.github/workflows/prune-skipped-runs.yml

@@ -1,0 +1,23 @@
+name: Prune skipped runs
+
+# `on:` can't filter by label, comment author or review state. So each issue, comment
+# and review event starts every agent workflow listening for it, and those whose `if:`
+# doesn't match end as skipped runs. The agent workflows call this after their job.
+on:
+  workflow_call:
+
+jobs:
+  prune:
+    name: Delete skipped runs
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - run: |
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs?status=skipped&per_page=100" --jq '.workflow_runs[].id' |
+            while read -r id; do
+              # Another workflow's prune may have deleted it first
+              gh api --method DELETE "repos/$GITHUB_REPOSITORY/actions/runs/$id" || true
+            done
+        env:
+          GH_TOKEN: ${{ github.token }}
