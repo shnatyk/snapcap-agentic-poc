@@ -45,6 +45,8 @@ jobs:
 
       - run: npm ci
 
+      - uses: ./.github/actions/subprocess-isolation
+
       - uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
